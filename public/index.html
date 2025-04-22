@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Thumb Volume Control</title>
+  
+</head>
+<body>
+  <h1>🎵 Thumb Gesture Volume Controller</h1>
+  <p>Hold 👍 = Keep Increasing | Hold 👎 = Keep Decreasing</p>
+
+  <div id="container">
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas" width="640" height="480"></canvas>
+  </div>
+
+  <!-- TensorFlow.js and Handpose -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose"></script>
+
+  <script>
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    let model;
+    let currentGesture = null;
+    let apiInterval = null;
+
+    async function setupCamera() {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 640, height: 480 },
+      });
+      video.srcObject = stream;
+      return new Promise((resolve) => {
+        video.onloadedmetadata = () => {
+          resolve(video);
+        };
+      });
+    }
+
+    async function loadModel() {
+      model = await handpose.load();
+      console.log("HandPose model loaded");
+      detectHands();
+    }
+
+    function drawLandmarks(landmarks) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      landmarks.forEach(([x, y]) => {
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, 2 * Math.PI);
+        ctx.fillStyle = "red";
+        ctx.fill();
+      });
+    }
+
+    function startApiLoop(gesture) {
+      stopApiLoop(); // clear existing
+      if (!gesture) return;
+
+      apiInterval = setInterval(() => {
+        const url = gesture === 'up'
+          ? "http://localhost:3000/volume/up"
+          : "http://localhost:3000/volume/down";
+        console.log(`Sending: ${gesture.toUpperCase()}`);
+        fetch(url);
+      }, 500); // 2 times per second
+    }
+
+    function stopApiLoop() {
+      if (apiInterval) {
+        clearInterval(apiInterval);
+        apiInterval = null;
+      }
+    }
+
+    async function detectHands() {
+      const predictions = await model.estimateHands(video, true);
+      if (predictions.length > 0) {
+        const landmarks = predictions[0].landmarks;
+        drawLandmarks(landmarks);
+
+        const thumbTip = landmarks[4];
+        const thumbBase = landmarks[2];
+        const detectedGesture = thumbTip[1] < thumbBase[1] ? "up" : "down";
+
+        if (detectedGesture !== currentGesture) {
+          currentGesture = detectedGesture;
+          startApiLoop(currentGesture);
+        }
+      } else {
+        currentGesture = null;
+        stopApiLoop();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+
+      requestAnimationFrame(detectHands);
+    }
+
+    setupCamera()
+      .then(loadModel)
+      .catch((err) => console.error("Camera error:", err));
+  </script>
+</body>
+</html>
