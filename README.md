@@ -1,4 +1,4 @@
-# Thumb Gesture Volume Controller 🎵
+# Thumb Gesture Volume Controller 
 
 This project demonstrates the use of hand gestures to control the volume of a system. The primary gesture is the **thumb up** for volume up and **thumb down** for volume down. The application uses **TensorFlow.js** and the **HandPose model** to track hand gestures through a camera feed.
 
