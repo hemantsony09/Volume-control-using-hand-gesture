@@ -1,5 +1,3 @@
-// filename: index.mjs or server.js (with "type": "module" in package.json)
-
 import express from 'express';
 import path from 'path';
 import { exec } from 'child_process';
